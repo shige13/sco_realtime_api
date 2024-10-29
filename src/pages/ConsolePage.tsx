@@ -184,7 +184,7 @@ export function ConsolePage() {
     client.sendUserMessageContent([
       {
         type: `input_text`,
-        text: `Hello!`,
+        text: `こんにちは、新宿HANIKAの問い合わせ窓口です。何かお困りでしょうか？と答えて`,
         // text: `For testing purposes, I want you to list ten car brands. Number each item, e.g. "one (or whatever number you are one): the item name".`
       },
     ]);
@@ -367,6 +367,12 @@ export function ConsolePage() {
     };
   }, []);
 
+  const GAS_ENDPOINT =
+    'https://script.google.com/macros/s/AKfycbxiDH6zrESbgx5OIrfDST0xS5EyS21gx8Pb7eRfrwTzmMIaE-PUPzw9bp3zeaHb0zCs/exec';
+
+  const GAS_ENDPOINT_RESERVE =
+    'https://script.google.com/macros/s/AKfycbxkfq1e3bJF3Qg5MjG09O8EGhzmizINutjT1eeqQFz-IMGsbiB6tErp2SxTxDyTNF51/exec';
+
   /**
    * Core RealtimeClient and audio capture setup
    * Set all of our instructions, tools, events and more
@@ -452,6 +458,168 @@ export function ConsolePage() {
         };
         setMarker({ lat, lng, location, temperature, wind_speed });
         return json;
+      }
+    );
+    client.addTool(
+      {
+        name: 'post_question',
+        description: '患者様からの質問をスプレッドシートに投稿',
+        parameters: {
+          type: 'object',
+          properties: {
+            name: {
+              type: 'string',
+              description: '質問者氏名',
+            },
+            to: {
+              type: 'string',
+              description: '質問先',
+            },
+            content: {
+              type: 'string',
+              description: '質問内容',
+            },
+          },
+          required: ['name', 'to', 'content'],
+        },
+      },
+      async ({
+        name,
+        to,
+        content,
+      }: {
+        name: string;
+        to: string;
+        content: string;
+      }) => {
+        const url = GAS_ENDPOINT;
+        const params = new URLSearchParams({
+          name: name,
+          to: to,
+          content: content,
+        });
+
+        try {
+          const response = await fetch(`${url}?${params.toString()}`, {
+            method: 'GET',
+          });
+          const responseData = await response.json();
+          if (response.ok && responseData.result === 'success') {
+            console.log(
+              '質問が正常に送信されました。行番号:',
+              responseData.row || 'unknown'
+            );
+            return { status: 200, rowNumber: responseData.row || 'unknown' };
+          } else {
+            console.error('エラーが発生しました:', responseData.error);
+            return { status: response.status };
+          }
+        } catch (error) {
+          console.error('その他のエラーが発生しました:', error);
+          return { status: 500 };
+        }
+      }
+    );
+    client.addTool(
+      {
+        name: 'get_question_answer',
+        description: '指定された行番号の質問に対する回答を取得',
+        parameters: {
+          type: 'object',
+          properties: {
+            row_number: {
+              type: 'string',
+              description: '回答を取得したい質問の行番号',
+            },
+          },
+          required: ['row_number'],
+        },
+      },
+      async ({ row_number }: { row_number: string }) => {
+        const url = GAS_ENDPOINT;
+        const params = new URLSearchParams({ row: row_number });
+        try {
+          const response = await fetch(`${url}?${params.toString()}`);
+          const responseData = await response.json();
+          if (response.ok && responseData.result === 'success') {
+            return responseData.content; // F列の内容を返す
+          } else {
+            console.error('エラーが発生しました:', responseData.error);
+            return null;
+          }
+        } catch (error) {
+          console.error('リクエストエラーが発生しました:', error);
+          return null;
+        }
+      }
+    );
+    client.addTool(
+      {
+        name: 'get_reserve_date',
+        description: '予約可能な日時一覧の取得',
+        parameters: {
+          type: 'object',
+          properties: {
+            // 必要なパラメータがあればここに追加
+          },
+        },
+      },
+      async () => {
+        const url = GAS_ENDPOINT_RESERVE;
+        try {
+          const response = await fetch(url);
+          const responseData = await response.json();
+          if (response.ok && responseData.result === 'success') {
+            return responseData.content; // 予約可能な日時一覧
+          } else {
+            console.error('エラーが発生しました:', responseData.error);
+            return null;
+          }
+        } catch (error) {
+          console.error('リクエストエラーが発生しました:', error);
+          return null;
+        }
+      }
+    );
+    client.addTool(
+      {
+        name: 'post_reserve',
+        description: '番号を送信して予約を取る',
+        parameters: {
+          type: 'object',
+          properties: {
+            reserve_number: {
+              type: 'string',
+              description: 'ユーザーが予約したい日時の番号',
+            },
+          },
+          required: ['reserve_number'],
+        },
+      },
+      async ({ reserve_number }: { reserve_number: string }) => {
+        const url = GAS_ENDPOINT_RESERVE;
+        const params = new URLSearchParams({
+          reserve_number: reserve_number,
+        });
+        try {
+          const response = await fetch(`${url}?${params.toString()}`, {
+            method: 'GET',
+          });
+          const responseData = await response.json();
+          if (response.ok && responseData.result === 'success') {
+            console.log('予約が正常に送信されました。');
+            return { status: 200 };
+          } else {
+            console.error(
+              'エラーが発生しました:',
+              responseData.error || '不明なエラー'
+            );
+            return { status: response.status, error: responseData.error };
+          }
+        } catch (error) {
+          console.error('その他のエラーが発生しました:', error);
+          return { status: 500 };
+        }
       }
     );
 
