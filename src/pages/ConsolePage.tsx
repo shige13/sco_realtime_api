@@ -1,12 +1,12 @@
 /**
- * Running a local relay server will allow you to hide your API key
- * and run custom logic on the server
+ * ローカルリレーサーバーを実行すると、APIキーを隠し、
+ * サーバー上でカスタムロジックを実行できます。
  *
- * Set the local relay server address to:
+ * ローカルリレーサーバーのアドレスを設定します：
  * REACT_APP_LOCAL_RELAY_SERVER_URL=http://localhost:8081
  *
- * This will also require you to set OPENAI_API_KEY= in a `.env` file
- * You can run it with `npm run relay`, in parallel with `npm start`
+ * これにより、`.env`ファイルにOPENAI_API_KEY=を設定する必要があります。
+ * `npm run relay`で実行し、`npm start`と並行して動かせます。
  */
 const LOCAL_RELAY_SERVER_URL: string =
   process.env.REACT_APP_LOCAL_RELAY_SERVER_URL || '';
@@ -28,7 +28,7 @@ import './ConsolePage.scss';
 import { isJsxOpeningLikeElement } from 'typescript';
 
 /**
- * Type for result from get_weather() function call
+ * get_weather()関数呼び出しからの結果の型
  */
 interface Coordinates {
   lat: number;
@@ -45,7 +45,7 @@ interface Coordinates {
 }
 
 /**
- * Type for all event logs
+ * すべてのイベントログの型
  */
 interface RealtimeEvent {
   time: string;
@@ -56,8 +56,8 @@ interface RealtimeEvent {
 
 export function ConsolePage() {
   /**
-   * Ask user for API Key
-   * If we're using the local relay server, we don't need this
+   * ユーザーにAPIキーを尋ねる
+   * ローカルリレーサーバーを使用している場合、これは必要ありません
    */
   const apiKey = LOCAL_RELAY_SERVER_URL
     ? ''
@@ -69,10 +69,10 @@ export function ConsolePage() {
   }
 
   /**
-   * Instantiate:
-   * - WavRecorder (speech input)
-   * - WavStreamPlayer (speech output)
-   * - RealtimeClient (API client)
+   * インスタンス化：
+   * - WavRecorder（音声入力）
+   * - WavStreamPlayer（音声出力）
+   * - RealtimeClient（APIクライアント）
    */
   const wavRecorderRef = useRef<WavRecorder>(
     new WavRecorder({ sampleRate: 24000 })
@@ -92,10 +92,10 @@ export function ConsolePage() {
   );
 
   /**
-   * References for
-   * - Rendering audio visualization (canvas)
-   * - Autoscrolling event logs
-   * - Timing delta for event log displays
+   * 以下の参照：
+   * - オーディオビジュアライゼーションのレンダリング（canvas）
+   * - イベントログの自動スクロール
+   * - イベントログ表示のタイミングデルタ
    */
   const clientCanvasRef = useRef<HTMLCanvasElement>(null);
   const serverCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -104,11 +104,11 @@ export function ConsolePage() {
   const startTimeRef = useRef<string>(new Date().toISOString());
 
   /**
-   * All of our variables for displaying application state
-   * - items are all conversation items (dialog)
-   * - realtimeEvents are event logs, which can be expanded
-   * - memoryKv is for set_memory() function
-   * - coords, marker are for get_weather() function
+   * アプリケーション状態を表示するためのすべての変数
+   * - itemsはすべての会話項目（ダイアログ）
+   * - realtimeEventsはイベントログで、展開可能
+   * - memoryKvはset_memory()関数用
+   * - coords、markerはget_weather()関数用
    */
   const [items, setItems] = useState<ItemType[]>([]);
   const [realtimeEvents, setRealtimeEvents] = useState<RealtimeEvent[]>([]);
@@ -125,8 +125,18 @@ export function ConsolePage() {
   });
   const [marker, setMarker] = useState<Coordinates | null>(null);
 
+  // --- 予約日時モーダル用の状態変数を追加 ---
+  const [reserveDates, setReserveDates] = useState<
+    { row: number; date: string }[]
+  >([]);
+  const [showReserveModal, setShowReserveModal] = useState(false);
+  const [selectedReserveDate, setSelectedReserveDate] = useState<number | null>(
+    null
+  );
+  // --------------------------------------------
+
   /**
-   * Utility for formatting the timing of logs
+   * ログのタイミングをフォーマットするユーティリティ
    */
   const formatTime = useCallback((timestamp: string) => {
     const startTime = startTimeRef.current;
@@ -147,7 +157,7 @@ export function ConsolePage() {
   }, []);
 
   /**
-   * When you click the API key
+   * APIキーをクリックしたとき
    */
   const resetAPIKey = useCallback(() => {
     const apiKey = prompt('OpenAI API Key');
@@ -159,33 +169,32 @@ export function ConsolePage() {
   }, []);
 
   /**
-   * Connect to conversation:
-   * WavRecorder taks speech input, WavStreamPlayer output, client is API client
+   * 会話に接続：
+   * WavRecorderは音声入力、WavStreamPlayerは音声出力、clientはAPIクライアント
    */
   const connectConversation = useCallback(async () => {
     const client = clientRef.current;
     const wavRecorder = wavRecorderRef.current;
     const wavStreamPlayer = wavStreamPlayerRef.current;
 
-    // Set state variables
+    // 状態変数を設定
     startTimeRef.current = new Date().toISOString();
     setIsConnected(true);
     setRealtimeEvents([]);
     setItems(client.conversation.getItems());
 
-    // Connect to microphone
+    // マイクに接続
     await wavRecorder.begin();
 
-    // Connect to audio output
+    // オーディオ出力に接続
     await wavStreamPlayer.connect();
 
-    // Connect to realtime API
+    // Realtime APIに接続
     await client.connect();
     client.sendUserMessageContent([
       {
         type: `input_text`,
         text: `こんにちは、新宿HANIKAの問い合わせ窓口です。何かお困りでしょうか？と答えて`,
-        // text: `For testing purposes, I want you to list ten car brands. Number each item, e.g. "one (or whatever number you are one): the item name".`
       },
     ]);
 
@@ -195,7 +204,7 @@ export function ConsolePage() {
   }, []);
 
   /**
-   * Disconnect and reset conversation state
+   * 会話を切断し、状態をリセット
    */
   const disconnectConversation = useCallback(async () => {
     setIsConnected(false);
@@ -224,8 +233,8 @@ export function ConsolePage() {
   }, []);
 
   /**
-   * In push-to-talk mode, start recording
-   * .appendInputAudio() for each sample
+   * プッシュトゥトークモードで録音を開始
+   * 各サンプルに対して.appendInputAudio()を実行
    */
   const startRecording = async () => {
     setIsRecording(true);
@@ -241,7 +250,7 @@ export function ConsolePage() {
   };
 
   /**
-   * In push-to-talk mode, stop recording
+   * プッシュトゥトークモードで録音を停止
    */
   const stopRecording = async () => {
     setIsRecording(false);
@@ -252,7 +261,7 @@ export function ConsolePage() {
   };
 
   /**
-   * Switch between Manual <> VAD mode for communication
+   * 通信の手動モードとVADモードを切り替え
    */
   const changeTurnEndType = async (value: string) => {
     const client = clientRef.current;
@@ -270,13 +279,13 @@ export function ConsolePage() {
   };
 
   /**
-   * Auto-scroll the event logs
+   * イベントログの自動スクロール
    */
   useEffect(() => {
     if (eventsScrollRef.current) {
       const eventsEl = eventsScrollRef.current;
       const scrollHeight = eventsEl.scrollHeight;
-      // Only scroll if height has just changed
+      // 高さが変わった場合のみスクロール
       if (scrollHeight !== eventsScrollHeightRef.current) {
         eventsEl.scrollTop = scrollHeight;
         eventsScrollHeightRef.current = scrollHeight;
@@ -285,7 +294,7 @@ export function ConsolePage() {
   }, [realtimeEvents]);
 
   /**
-   * Auto-scroll the conversation logs
+   * 会話ログの自動スクロール
    */
   useEffect(() => {
     const conversationEls = [].slice.call(
@@ -298,7 +307,7 @@ export function ConsolePage() {
   }, [items]);
 
   /**
-   * Set up render loops for the visualization canvas
+   * ビジュアライゼーション用のレンダーループを設定
    */
   useEffect(() => {
     let isLoaded = true;
@@ -374,35 +383,36 @@ export function ConsolePage() {
     'https://script.google.com/macros/s/AKfycbxkfq1e3bJF3Qg5MjG09O8EGhzmizINutjT1eeqQFz-IMGsbiB6tErp2SxTxDyTNF51/exec';
 
   /**
-   * Core RealtimeClient and audio capture setup
-   * Set all of our instructions, tools, events and more
+   * コアのRealtimeClientとオーディオキャプチャのセットアップ
+   * すべてのinstructions、tools、eventsなどを設定
    */
   useEffect(() => {
-    // Get refs
+    // 参照を取得
     const wavStreamPlayer = wavStreamPlayerRef.current;
     const client = clientRef.current;
 
-    // Set instructions
+    // instructionsを設定
     client.updateSession({ instructions: instructions });
-    // Set transcription, otherwise we don't get user transcriptions back
+    // transcriptionを設定。これがないとユーザーのtranscriptionが戻ってきません
     client.updateSession({ input_audio_transcription: { model: 'whisper-1' } });
 
-    // Add tools
+    // ツールを追加
     client.addTool(
       {
         name: 'set_memory',
-        description: 'Saves important data about the user into memory.',
+        description: 'ユーザーに関する重要なデータをメモリに保存します。',
         parameters: {
           type: 'object',
           properties: {
             key: {
               type: 'string',
               description:
-                'The key of the memory value. Always use lowercase and underscores, no other characters.',
+                'メモリ値のキー。常に小文字とアンダースコアを使用し、他の文字は使用しないでください。',
             },
             value: {
               type: 'string',
-              description: 'Value can be anything represented as a string',
+              description:
+                '値は文字列として表現できるものであれば何でも可能です。',
             },
           },
           required: ['key', 'value'],
@@ -421,21 +431,21 @@ export function ConsolePage() {
       {
         name: 'get_weather',
         description:
-          'Retrieves the weather for a given lat, lng coordinate pair. Specify a label for the location.',
+          '指定された緯度経度の位置の天気を取得します。場所のラベルを指定してください。',
         parameters: {
           type: 'object',
           properties: {
             lat: {
               type: 'number',
-              description: 'Latitude',
+              description: '緯度',
             },
             lng: {
               type: 'number',
-              description: 'Longitude',
+              description: '経度',
             },
             location: {
               type: 'string',
-              description: 'Name of the location',
+              description: '場所の名前',
             },
           },
           required: ['lat', 'lng', 'location'],
@@ -553,6 +563,7 @@ export function ConsolePage() {
         }
       }
     );
+    // --- 'get_reserve_date'ツールをモーダル表示に修正 ---
     client.addTool(
       {
         name: 'get_reserve_date',
@@ -570,7 +581,9 @@ export function ConsolePage() {
           const response = await fetch(url);
           const responseData = await response.json();
           if (response.ok && responseData.result === 'success') {
-            return responseData.content; // 予約可能な日時一覧
+            setReserveDates(responseData.content); // 予約日時を設定
+            setShowReserveModal(true); // モーダルを表示
+            return responseData.content; // アシスタントに日時を返す
           } else {
             console.error('エラーが発生しました:', responseData.error);
             return null;
@@ -581,6 +594,7 @@ export function ConsolePage() {
         }
       }
     );
+    // ------------------------------------------------
     client.addTool(
       {
         name: 'post_reserve',
@@ -623,12 +637,12 @@ export function ConsolePage() {
       }
     );
 
-    // handle realtime events from client + server for event logging
+    // クライアントとサーバーからのリアルタイムイベントを処理してイベントログを記録
     client.on('realtime.event', (realtimeEvent: RealtimeEvent) => {
       setRealtimeEvents((realtimeEvents) => {
         const lastEvent = realtimeEvents[realtimeEvents.length - 1];
         if (lastEvent?.event.type === realtimeEvent.event.type) {
-          // if we receive multiple events in a row, aggregate them for display purposes
+          // 同じイベントが連続して受信された場合、表示のためにそれらを集約
           lastEvent.count = (lastEvent.count || 0) + 1;
           return realtimeEvents.slice(0, -1).concat(lastEvent);
         } else {
@@ -663,13 +677,30 @@ export function ConsolePage() {
     setItems(client.conversation.getItems());
 
     return () => {
-      // cleanup; resets to defaults
+      // クリーンアップ；デフォルトにリセット
       client.reset();
     };
   }, []);
 
+  // --- 予約日時の送信を処理する関数を追加 ---
+  const handleReserveDateSubmit = () => {
+    const client = clientRef.current;
+    // モーダルを閉じる
+    setShowReserveModal(false);
+    // 選択した日時の行番号を送信
+    if (selectedReserveDate !== null) {
+      client.sendUserMessageContent([
+        {
+          type: 'input_text',
+          text: selectedReserveDate.toString(), // 行番号を文字列として送信
+        },
+      ]);
+    }
+  };
+  // --------------------------------------------
+
   /**
-   * Render the application
+   * アプリケーションをレンダリング
    */
   return (
     <div data-component="ConsolePage">
@@ -721,7 +752,7 @@ export function ConsolePage() {
                       <div
                         className="event-summary"
                         onClick={() => {
-                          // toggle event details
+                          // イベント詳細の表示切り替え
                           const id = event.event_id;
                           const expanded = { ...expandedEvents };
                           if (expanded[id]) {
@@ -789,11 +820,11 @@ export function ConsolePage() {
                       </div>
                     </div>
                     <div className={`speaker-content`}>
-                      {/* tool response */}
+                      {/* ツールのレスポンス */}
                       {conversationItem.type === 'function_call_output' && (
                         <div>{conversationItem.formatted.output}</div>
                       )}
-                      {/* tool call */}
+                      {/* ツールの呼び出し */}
                       {!!conversationItem.formatted.tool && (
                         <div>
                           {conversationItem.formatted.tool.name}(
@@ -894,6 +925,36 @@ export function ConsolePage() {
           </div>
         </div>
       </div>
+      {/* --- 予約日時用のモーダルコンポーネントを追加 --- */}
+      {showReserveModal && (
+        <div className="modal">
+          <div className="modal-content">
+            <h2>予約可能な日時一覧</h2>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleReserveDateSubmit();
+              }}
+            >
+              {reserveDates.map((item, index) => (
+                <div key={index}>
+                  <input
+                    type="radio"
+                    id={`date-${index}`}
+                    name="reserveDate"
+                    value={item.row}
+                    checked={selectedReserveDate === item.row}
+                    onChange={() => setSelectedReserveDate(item.row)}
+                  />
+                  <label htmlFor={`date-${index}`}>{item.date}</label>
+                </div>
+              ))}
+              <button type="submit">送信</button>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* ------------------------------------------- */}
     </div>
   );
 }
